@@ -1233,3 +1233,13 @@ footer b { color: #9e7138; font-weight: 400; }
         width: 90%;
     }
 }
+/* Backend empty state: intentionally small so the existing design is preserved. */
+.archive-empty {
+    margin: auto;
+    padding: 28px 18px;
+    color: #a39075;
+    text-align: center;
+    font-size: 9px;
+    line-height: 1.8;
+    letter-spacing: .5px;
+}
