@@ -603,11 +603,69 @@ resetButton.addEventListener("click", () => {
     renderArchive();
 });
 
+async function deleteRecording(id) {
+    const response = await fetch(
+        `http://localhost:8080/api/recordings/${id}`,
+        {
+            method: "DELETE"
+        }
+    );
 
+    if (!response.ok) {
+        throw new Error("Failed to delete recording");
+    }
+}
 /* =========================================================
    ARCHIVE
 ========================================================= */
+async function updateRecordingTitle(id, newTitle) {
+    const response = await fetch(
+        `http://localhost:8080/api/recordings/${id}`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                title: newTitle
+            })
+        }
+    );
 
+    const updatedRecording = await response.json();
+
+    return updatedRecording;
+}
+recordingNameInput.addEventListener("change", async () => {
+    if (!selectedRecordingId) return;
+
+    const newTitle = recordingNameInput.value.trim();
+
+    if (!newTitle) return;
+
+    const updatedRecording = await updateRecordingTitle(
+        selectedRecordingId,
+        newTitle
+    );
+
+    const index = recordings.findIndex(
+        recording => String(recording.id) === String(selectedRecordingId)
+    );
+
+    if (index !== -1) {
+        recordings[index] = updatedRecording;
+    }
+
+    if (transcriptionTitle) {
+        transcriptionTitle.textContent = updatedRecording.title;
+    }
+
+    renderArchive();
+});
+async function loadRecordings() {
+    const response = await fetch("http://localhost:8080/api/recordings");
+    recordings = await response.json();
+}
 function renderArchive() {
     if (!archiveList) return;
 
@@ -649,8 +707,8 @@ function renderArchive() {
                     <div class="case-title">${escapeHTML(recording.title)}</div>
                     <div class="case-tags">
                         ${recording.tags
-                            .map(tag => `<span class="case-tag">${escapeHTML(tag)}</span>`)
-                            .join("")}
+                .map(tag => `<span class="case-tag">${escapeHTML(tag)}</span>`)
+                .join("")}
                     </div>
                 </div>
 
@@ -670,9 +728,13 @@ function renderArchive() {
             </div>
 
             <div class="case-bottom">
-                <span class="case-meta">Recorded voice memo · SIDE A</span>
-                <button class="case-play" type="button">PLAY</button>
-            </div>
+    <span class="case-meta">Recorded voice memo · SIDE A</span>
+
+    <div class="case-actions">
+        <button class="case-delete" type="button">DELETE</button>
+        <button class="case-play" type="button">PLAY</button>
+    </div>
+</div>
         `;
 
         const openRecording = () => {
@@ -695,6 +757,52 @@ function renderArchive() {
             playRecording(recording);
         });
 
+        const caseDeleteButton = caseItem.querySelector(".case-delete");
+
+        caseDeleteButton.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            const confirmed = confirm(
+                `Delete "${recording.title}"?`
+            );
+
+            if (!confirmed) return;
+            await deleteRecording(recording.id);
+
+            recordings = recordings.filter(
+                item => String(item.id) !== String(recording.id)
+            );
+
+            if (String(selectedRecordingId) === String(recording.id)) {
+                selectedRecordingId = null;
+
+                if (recordingNameInput) {
+                    recordingNameInput.value = "";
+                }
+
+                if (transcriptionTitle) {
+                    transcriptionTitle.textContent = "TRANSCRIPT";
+                }
+
+                transcriptionText.textContent = "No recording selected.";
+                transcriptionText.classList.add("placeholder");
+
+                if (waveformDuration) {
+                    waveformDuration.textContent = "00:00";
+                }
+
+                if (timer) {
+                    timer.textContent = "00:00";
+                }
+
+                statusText.textContent = "READY TO RECORD";
+
+                recordButton.disabled = false;
+                stopButton.disabled = true;
+                saveButton.disabled = true;
+            }
+
+            renderArchive();
+        });
         archiveList.appendChild(caseItem);
     });
 }
@@ -811,7 +919,10 @@ if (playbackButton) {
         }
     });
 }
-
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadRecordings();
+    renderArchive();
+});
 
 /* =========================================================
    INITIALISE
