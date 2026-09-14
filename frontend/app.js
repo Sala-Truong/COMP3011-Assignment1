@@ -22,7 +22,7 @@ const archiveList = document.getElementById("archiveList");
 const archiveCount = document.getElementById("archiveCount");
 const recordingNameInput = document.getElementById("recordingName");
 
-const API_URL = "/api/recordings";
+const API_URL = "http://localhost:8080/api/recordings";
 const MAX_RECORDING_SECONDS = 60;
 
 let seconds = 0;
@@ -36,6 +36,7 @@ let mediaRecorder = null;
 let mediaStream = null;
 let audioChunks = [];
 let currentAudio = null;
+let recordedBlob = null;
 
 let speechRecognition = null;
 let finalTranscript = "";
