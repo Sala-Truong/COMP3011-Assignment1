@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,29 +27,33 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.sala.cassette.model.Recording;
+import com.sala.cassette.repository.RecordingRepository;
+
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
-import com.sala.cassette.model.Recording;
 
 @RestController
 @RequestMapping("/api/recordings")
 @CrossOrigin(origins = {
-	    "http://127.0.0.1:5500",
-	    "http://localhost:5500"
-	})
+        "http://127.0.0.1:5500",
+        "http://localhost:5500"
+})
 public class RecordingController {
 
-    private final List<Recording> recordings = new ArrayList<>();
-
-    private long nextId = 1;
+    private final RecordingRepository recordingRepository;
+    private final JsonMapper objectMapper;
 
     private final Path uploadDirectory =
             Paths.get("uploads").toAbsolutePath().normalize();
 
-    private final JsonMapper objectMapper;
 
-    public RecordingController(JsonMapper objectMapper) {
+    public RecordingController(
+            JsonMapper objectMapper,
+            RecordingRepository recordingRepository) {
+
         this.objectMapper = objectMapper;
+        this.recordingRepository = recordingRepository;
 
         try {
             Files.createDirectories(uploadDirectory);
@@ -62,19 +65,24 @@ public class RecordingController {
         }
     }
 
+
     // GET all recordings
     @GetMapping
     public List<Recording> getRecordings() {
-        return recordings;
+
+        return recordingRepository.findAllByOrderByIdDesc();
     }
+
 
     // GET one recording
     @GetMapping("/{id}")
     public Recording getRecordingById(@PathVariable Long id) {
+
         return findRecording(id);
     }
 
-    // PLAY / DOWNLOAD recording audio
+
+    // PLAY / DOWNLOAD audio
     @GetMapping("/{id}/audio")
     public ResponseEntity<Resource> getRecordingAudio(
             @PathVariable Long id) {
@@ -82,6 +90,7 @@ public class RecordingController {
         Recording recording = findRecording(id);
 
         if (recording.getAudioFilename() == null) {
+
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Audio not found"
@@ -94,6 +103,7 @@ public class RecordingController {
                 );
 
         if (!Files.exists(filePath)) {
+
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Audio file not found"
@@ -106,22 +116,29 @@ public class RecordingController {
         String contentType;
 
         try {
+
             contentType = Files.probeContentType(filePath);
+
         } catch (IOException e) {
+
             contentType = null;
         }
 
         if (contentType == null) {
+
             contentType = "application/octet-stream";
         }
 
         return ResponseEntity
                 .ok()
-                .contentType(MediaType.parseMediaType(contentType))
+                .contentType(
+                        MediaType.parseMediaType(contentType)
+                )
                 .body(resource);
     }
 
-    // UPDATE metadata
+
+    // UPDATE recording metadata
     @PutMapping("/{id}")
     public Recording updateRecording(
             @PathVariable Long id,
@@ -130,7 +147,9 @@ public class RecordingController {
         Recording recording = findRecording(id);
 
         if (updatedRecording.getTitle() != null) {
-            recording.setTitle(updatedRecording.getTitle());
+            recording.setTitle(
+                    updatedRecording.getTitle()
+            );
         }
 
         if (updatedRecording.getTranscript() != null) {
@@ -140,7 +159,9 @@ public class RecordingController {
         }
 
         if (updatedRecording.getDate() != null) {
-            recording.setDate(updatedRecording.getDate());
+            recording.setDate(
+                    updatedRecording.getDate()
+            );
         }
 
         if (updatedRecording.getDuration() != null) {
@@ -150,11 +171,15 @@ public class RecordingController {
         }
 
         if (updatedRecording.getIcon() != null) {
-            recording.setIcon(updatedRecording.getIcon());
+            recording.setIcon(
+                    updatedRecording.getIcon()
+            );
         }
 
         if (updatedRecording.getTags() != null) {
-            recording.setTags(updatedRecording.getTags());
+            recording.setTags(
+                    updatedRecording.getTags()
+            );
         }
 
         if (updatedRecording.getAccent() != null) {
@@ -163,16 +188,15 @@ public class RecordingController {
             );
         }
 
-        return recording;
+        return recordingRepository.save(recording);
     }
 
-    // DELETE recording + audio file
+
+    // DELETE recording + audio
     @DeleteMapping("/{id}")
     public void deleteRecording(@PathVariable Long id) {
 
         Recording recording = findRecording(id);
-
-        recordings.remove(recording);
 
         if (recording.getAudioFilename() != null) {
 
@@ -182,102 +206,136 @@ public class RecordingController {
                     );
 
             try {
+
                 Files.deleteIfExists(filePath);
+
             } catch (IOException e) {
+
                 System.err.println(
-                        "Could not delete audio file: " + filePath
+                        "Could not delete audio file: "
+                        + filePath
                 );
             }
         }
+
+        recordingRepository.delete(recording);
     }
 
+
+    // Find one recording in database
     private Recording findRecording(Long id) {
 
-        for (Recording recording : recordings) {
-
-            if (recording.getId().equals(id)) {
-                return recording;
-            }
-        }
-
-        throw new ResponseStatusException(
-                HttpStatus.NOT_FOUND,
-                "Recording not found"
-        );
+        return recordingRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Recording not found"
+                        )
+                );
     }
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+
+
+    // CREATE recording
+    @PostMapping(
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public Recording addRecording(
             @RequestParam("audio") MultipartFile audio,
             @RequestParam("title") String title,
             @RequestParam("date") String date,
             @RequestParam("duration") String duration,
             @RequestParam("transcript") String transcript,
-            @RequestParam(value = "icon", defaultValue = "●") String icon,
-            @RequestParam(value = "accent", defaultValue = "#b85d43") String accent,
-            @RequestParam(value = "tags", defaultValue = "[]") String tagsJson) {
-    	System.out.println("POST /api/recordings reached");
+            @RequestParam(
+                    value = "icon",
+                    defaultValue = "●"
+            ) String icon,
+            @RequestParam(
+                    value = "accent",
+                    defaultValue = "#b85d43"
+            ) String accent,
+            @RequestParam(
+                    value = "tags",
+                    defaultValue = "[]"
+            ) String tagsJson) {
+
+
         if (audio.isEmpty()) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Audio file is empty"
             );
         }
 
-        String originalFilename = audio.getOriginalFilename();
 
-        if (originalFilename == null || originalFilename.isBlank()) {
+        String originalFilename =
+                audio.getOriginalFilename();
+
+        if (originalFilename == null
+                || originalFilename.isBlank()) {
+
             originalFilename = "recording.webm";
         }
+
 
         originalFilename =
                 Paths.get(originalFilename)
                         .getFileName()
                         .toString();
 
+
         String storedFilename =
-                UUID.randomUUID() + "_" + originalFilename;
+                UUID.randomUUID()
+                + "_"
+                + originalFilename;
+
 
         Path filePath =
                 uploadDirectory.resolve(storedFilename);
 
+
         try {
+
             Files.copy(
                     audio.getInputStream(),
                     filePath,
                     StandardCopyOption.REPLACE_EXISTING
             );
+
         } catch (IOException e) {
+
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "Could not save audio file"
             );
         }
 
+
         List<String> tags;
 
         try {
+
             tags = objectMapper.readValue(
                     tagsJson,
                     new TypeReference<List<String>>() {}
             );
+
         } catch (Exception e) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid tags"
             );
         }
 
-        long id = nextId++;
 
-        String audioUrl =
-                ServletUriComponentsBuilder
-                        .fromCurrentContextPath()
-                        .path("/api/recordings/{id}/audio")
-                        .buildAndExpand(id)
-                        .toUriString();
-
+        /*
+         * Notice:
+         * We DON'T create the ID ourselves anymore.
+         * H2/JPA will generate it.
+         */
         Recording recording = new Recording(
-                id,
                 title,
                 date,
                 duration,
@@ -285,13 +343,33 @@ public class RecordingController {
                 tags,
                 accent,
                 transcript,
-                audioUrl,
+                null,
                 storedFilename
         );
 
-        recordings.add(0, recording);
 
-        return recording;
+        // Save first so database creates the ID
+        recording =
+                recordingRepository.save(recording);
+
+
+        // Now we can use the generated ID
+        String audioUrl =
+                ServletUriComponentsBuilder
+                        .fromCurrentContextPath()
+                        .path(
+                            "/api/recordings/{id}/audio"
+                        )
+                        .buildAndExpand(
+                            recording.getId()
+                        )
+                        .toUriString();
+
+
+        recording.setAudioUrl(audioUrl);
+
+
+        // Save audioUrl into database
+        return recordingRepository.save(recording);
     }
-    
 }
