@@ -14,6 +14,16 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.UUID;
+
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.sala.cassette.model.Recording;
 
 @RestController
@@ -101,5 +111,41 @@ public class RecordingController {
             HttpStatus.NOT_FOUND,
             "Recording not found"
         );
+    }
+    @PostMapping("/upload")
+    public String uploadRecording(
+            @RequestParam("file") MultipartFile file) throws IOException {
+
+        if (file.isEmpty()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Audio file is empty"
+            );
+        }
+
+        // Create uploads folder if it does not exist
+        Path uploadDirectory = Paths.get("uploads");
+
+        if (!Files.exists(uploadDirectory)) {
+            Files.createDirectories(uploadDirectory);
+        }
+
+        // Generate a unique filename
+        String originalFilename = file.getOriginalFilename();
+
+        String storedFilename =
+                UUID.randomUUID() + "_" + originalFilename;
+
+        Path filePath =
+                uploadDirectory.resolve(storedFilename);
+
+        // Save the uploaded audio
+        Files.copy(
+            file.getInputStream(),
+            filePath,
+            StandardCopyOption.REPLACE_EXISTING
+        );
+
+        return "Audio uploaded successfully: " + storedFilename;
     }
 }
