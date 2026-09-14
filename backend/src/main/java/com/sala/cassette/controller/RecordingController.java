@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import com.sala.cassette.model.Recording;
 
@@ -59,5 +61,45 @@ public class RecordingController {
         recording.setId(nextId++);
         recordings.add(recording);
         return recording;
+    }
+    @DeleteMapping("/{id}")
+    public void deleteRecording(@PathVariable Long id) {
+
+        boolean removed = recordings.removeIf(
+            recording -> recording.getId().equals(id)
+        );
+
+        if (!removed) {
+            throw new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Recording not found"
+            );
+        }
+    }
+    @PutMapping("/{id}")
+    public Recording updateRecording(
+            @PathVariable Long id,
+            @RequestBody Recording updatedRecording) {
+
+        for (Recording recording : recordings) {
+
+            if (recording.getId().equals(id)) {
+
+                if (updatedRecording.getName() != null) {
+                    recording.setName(updatedRecording.getName());
+                }
+
+                if (updatedRecording.getTranscript() != null) {
+                    recording.setTranscript(updatedRecording.getTranscript());
+                }
+
+                return recording;
+            }
+        }
+
+        throw new ResponseStatusException(
+            HttpStatus.NOT_FOUND,
+            "Recording not found"
+        );
     }
 }
