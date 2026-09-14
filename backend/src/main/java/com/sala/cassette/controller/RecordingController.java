@@ -26,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.client.HttpClientErrorException;
 
 import com.sala.cassette.model.Recording;
 import com.sala.cassette.repository.RecordingRepository;
+import com.sala.cassette.service.OpenAiTranscriptionService;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -43,17 +45,20 @@ public class RecordingController {
 
     private final RecordingRepository recordingRepository;
     private final JsonMapper objectMapper;
-
+    private final OpenAiTranscriptionService transcriptionService;
+    
     private final Path uploadDirectory =
             Paths.get("uploads").toAbsolutePath().normalize();
 
 
     public RecordingController(
             JsonMapper objectMapper,
-            RecordingRepository recordingRepository) {
+            RecordingRepository recordingRepository,
+            OpenAiTranscriptionService transcriptionService) {
 
         this.objectMapper = objectMapper;
         this.recordingRepository = recordingRepository;
+        this.transcriptionService = transcriptionService;
 
         try {
             Files.createDirectories(uploadDirectory);
@@ -267,6 +272,36 @@ public class RecordingController {
                     "Audio file is empty"
             );
         }
+        
+        String cloudTranscript;
+
+        try {
+            cloudTranscript = transcriptionService.transcribe(audio);
+
+        } catch (HttpClientErrorException e) {
+
+            if (e.getStatusCode().value() == 429) {
+                throw new ResponseStatusException(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "Transcription service is temporarily unavailable",
+                        e
+                );
+            }
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Transcription service returned an error",
+                    e
+            );
+
+        } catch (IOException e) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Transcription service failed",
+                    e
+            );
+        }
 
 
         String originalFilename =
@@ -342,7 +377,7 @@ public class RecordingController {
                 icon,
                 tags,
                 accent,
-                transcript,
+                cloudTranscript,
                 null,
                 storedFilename
         );
