@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.sala.cassette.model.Recording;
 
@@ -36,6 +39,20 @@ public class RecordingController {
     @GetMapping
     public List<Recording> getRecordings() {
         return recordings;
+    }
+    @GetMapping("/{id}")
+    public Recording getRecordingById(@PathVariable Long id) {
+
+        for (Recording recording : recordings) {
+            if (recording.getId().equals(id)) {
+                return recording;
+            }
+        }
+
+        throw new ResponseStatusException(
+            HttpStatus.NOT_FOUND,
+            "Recording not found"
+        );
     }
     @PostMapping
     public Recording addRecording(@RequestBody Recording recording) {
