@@ -346,43 +346,102 @@ recordButton.addEventListener("click", async () => {
             }
         });
 
-        mediaRecorder.addEventListener("stop", () => {
-            const mimeType = mediaRecorder.mimeType || "audio/webm";
-            const audioBlob = new Blob(audioChunks, { type: mimeType });
-            const duration = formatDuration(seconds);
-            const transcript = `${finalTranscript}${interimTranscript}`.trim();
-            const fallbackTranscript = transcript ||
-                "Audio recorded successfully. No speech transcript was captured by this browser.";
+		mediaRecorder.addEventListener("stop", async () => {
+		    const mimeType = mediaRecorder.mimeType || "audio/webm";
+		    const audioBlob = new Blob(audioChunks, { type: mimeType });
+		    const duration = formatDuration(seconds);
 
-            transcriptionText.classList.remove("placeholder");
-            transcriptionText.textContent = fallbackTranscript;
+		    // Browser transcript can still be used temporarily while waiting
+		    // for the accurate server/OpenAI transcription.
+		    const browserTranscript =
+		        `${finalTranscript}${interimTranscript}`.trim();
 
-            if (transcriptionTitle) {
-                transcriptionTitle.textContent = currentRecordingName;
-            }
+		    pendingRecording = {
+		        title: currentRecordingName,
+		        date: getCurrentDate(),
+		        duration,
+		        icon: "●",
+		        tags: ["New", "Voice Memo"],
+		        accent: "#b85d43",
+		        transcript: browserTranscript,
+		        audioBlob,
+		        localAudioUrl: URL.createObjectURL(audioBlob)
+		    };
 
-            updateStats(fallbackTranscript, `${duration} · unsaved`);
+		    stopMicrophoneStream();
 
-            pendingRecording = {
-                title: currentRecordingName,
-                date: getCurrentDate(),
-                duration,
-                icon: "●",
-                tags: ["New", "Voice Memo"],
-                accent: "#b85d43",
-                transcript: fallbackTranscript,
-                audioBlob,
-                localAudioUrl: URL.createObjectURL(audioBlob)
-            };
+		    statusText.textContent = "TRANSCRIBING";
+		    setTranscriptState("TRANSCRIBING", "recording");
 
-            statusText.textContent = "READY TO SAVE";
-            setTranscriptState("STOPPED · UNSAVED", "ready");
-            recordButton.disabled = true;
-            stopButton.disabled = true;
-            saveButton.disabled = false;
-            resetButton.disabled = false;
-            stopMicrophoneStream();
-        });
+		    transcriptionText.classList.remove("placeholder");
+		    transcriptionText.textContent =
+		        "Processing transcription...";
+
+		    recordButton.disabled = true;
+		    stopButton.disabled = true;
+		    saveButton.disabled = true;
+		    resetButton.disabled = false;
+
+		    try {
+		        // This immediately sends the audio to Spring/OpenAI.
+		        const savedRecording =
+		            await saveRecordingToServer(pendingRecording);
+
+		        // IMPORTANT: use OpenAI's transcription returned by backend
+		        transcriptionText.textContent =
+		            savedRecording.transcript;
+
+		        if (transcriptionTitle) {
+		            transcriptionTitle.textContent =
+		                savedRecording.title;
+		        }
+
+		        updateStats(
+		            savedRecording.transcript,
+		            `${savedRecording.duration} · saved`
+		        );
+
+		        selectedRecordingId = savedRecording.id;
+		        recordings.unshift(savedRecording);
+
+		        statusText.textContent = "READY";
+		        setTranscriptState(
+		            "TRANSCRIPTION COMPLETE",
+		            "ready"
+		        );
+
+		        if (pendingRecording.localAudioUrl) {
+		            URL.revokeObjectURL(
+		                pendingRecording.localAudioUrl
+		            );
+		        }
+
+		        pendingRecording = null;
+
+		        renderArchive();
+
+		        // Allow another recording
+		        recordButton.disabled = false;
+
+		    } catch (error) {
+		        console.error(
+		            "Could not transcribe recording:",
+		            error
+		        );
+
+		        statusText.textContent = "TRANSCRIPTION FAILED";
+		        setTranscriptState(
+		            "TRANSCRIPTION ERROR",
+		            "recording"
+		        );
+
+		        transcriptionText.textContent =
+		            browserTranscript ||
+		            "Transcription could not be completed.";
+
+		        recordButton.disabled = false;
+		    }
+		});
 
         cassette.classList.add("recording");
         statusText.textContent = "RECORDING";
@@ -482,57 +541,6 @@ stopButton.addEventListener("click", () => {
 
     mediaRecorder.stop();
 });
-
-
-/* =========================================================
-   SAVE
-   Persists the stopped tape through the backend.
-========================================================= */
-
-saveButton.addEventListener("click", async () => {
-    if (!pendingRecording) return;
-
-    if (recordingNameInput) {
-        const finalName = recordingNameInput.value.trim();
-        pendingRecording.title = finalName || "Untitled Recording";
-        recordingNameInput.value = pendingRecording.title;
-    }
-
-    saveButton.disabled = true;
-    statusText.textContent = "SAVING TAPE";
-    setTranscriptState("UPLOADING", "recording");
-
-    try {
-        const savedRecording = await saveRecordingToServer(pendingRecording);
-
-        selectedRecordingId = savedRecording.id;
-        recordings.unshift(savedRecording);
-
-        if (transcriptionTitle) {
-            transcriptionTitle.textContent = savedRecording.title;
-        }
-
-        statusText.textContent = "TAPE SAVED";
-        setTranscriptState("SAVED TO ARCHIVE", "ready");
-        updateStats(savedRecording.transcript, `${savedRecording.duration} · saved`);
-
-        if (pendingRecording.localAudioUrl) {
-            URL.revokeObjectURL(pendingRecording.localAudioUrl);
-        }
-
-        pendingRecording = null;
-        recordButton.disabled = true;
-        stopButton.disabled = true;
-        saveButton.disabled = true;
-        renderArchive();
-    } catch (error) {
-        console.error("Could not save recording:", error);
-        statusText.textContent = "SAVE FAILED";
-        setTranscriptState("SERVER ERROR · TRY AGAIN", "recording");
-        saveButton.disabled = false;
-    }
-});
-
 
 /* =========================================================
    NEW TAPE
