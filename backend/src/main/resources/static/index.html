@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main class="page">
+    <header class="header">
+        <div class="header-chip brand-chip" aria-hidden="true">
+            <span class="mini-cassette">▣</span>
+            <span>
+                <strong>CASSETTE 001</strong>
+                <small>Analog Intelligence</small>
+            </span>
+        </div>
+
+        <div class="title-block">
+            <h1>Speech to Text</h1>
+            <p class="tagline">RECORD · TRANSCRIBE · REMEMBER</p>
+        </div>
+
+        <div class="header-chip settings-chip" aria-hidden="true">
+            <span class="settings-icon">⚙</span>
+            <span>SETTINGS</span>
+        </div>
+    </header>
+
+    <section class="workspace">
+        <div class="left-panel">
+            <section class="cassette">
+                <div class="cassette-top">
+                    <span class="screw"></span>
+                    <span class="screw"></span>
+                </div>
+
+                <div class="cassette-label">
+                    <div class="cassette-label-top">
+                        <span class="small-label">SIDE A</span>
+                        <span class="label-line"></span>
+                        <span class="small-label">ST-001</span>
+                    </div>
+
+                    <h2>VOICE RECORDING</h2>
+
+                    <label class="recording-name-wrap" for="recordingName">
+                        <span class="recording-name-pencil" aria-hidden="true">✎</span>
+                        <input
+                            id="recordingName"
+                            class="recording-name"
+                            type="text"
+                            value="Untitled Recording"
+                            maxlength="40"
+                            autocomplete="off"
+                            aria-label="Tape name"
+                        >
+                    </label>
+
+                    <div class="recording-status">
+                        <span id="statusDot" class="status-dot"></span>
+                        <span id="statusText">READY TO RECORD</span>
+                    </div>
+                </div>
+
+                <div class="recorder-deck">
+                    <div class="level-module" aria-hidden="true">
+                        <span class="deck-label">AUTO LEVEL</span>
+                        <div class="level-slots"><i></i><i></i><i></i><i></i></div>
+                        <div class="level-knob">
+                            <span></span>
+                        </div>
+                        <div class="knob-scale"><span>MIN</span><span>MAX</span></div>
+                    </div>
+
+                    <div class="tape-window">
+                        <div class="reel" id="leftReel">
+                            <div class="reel-inner">
+                                <span></span><span></span><span></span>
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+
+                        <div class="timer-panel">
+                            <span class="timer-caption">ELAPSED</span>
+                            <div class="timer"><span id="timer">00:00</span></div>
+                            <div class="timer-scale"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                        </div>
+
+                        <div class="reel" id="rightReel">
+                            <div class="reel-inner">
+                                <span></span><span></span><span></span>
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vu-module" aria-hidden="true">
+                        <span class="deck-label">INPUT LEVEL</span>
+                        <div class="vu-meter">
+                            <span class="vu-needle"></span>
+                            <span class="vu-redline"></span>
+                            <b>VU</b>
+                        </div>
+                        <div class="peak-row"><span class="peak-light"></span> PEAK</div>
+                    </div>
+                </div>
+
+                <div class="tape-line"><span></span></div>
+
+                <div class="controls-row">
+                    <div class="deck-readout"><span class="readout-light green"></span> MIC ACTIVE</div>
+
+                    <div class="controls">
+                        <button id="recordButton" class="record-button" type="button">
+                            <span class="record-icon"></span> REC
+                        </button>
+
+                        <button id="stopButton" class="stop-button" type="button" disabled>
+                            <span class="stop-icon"></span> STOP
+                        </button>
+
+                        <button id="saveButton" class="save-button" type="button" disabled>
+                            <span class="save-icon" aria-hidden="true">◆</span> SAVE
+                        </button>
+
+                        <button id="resetButton" class="new-tape-button" type="button">
+                            <span class="new-tape-icon" aria-hidden="true">↶</span> NEW TAPE
+                        </button>
+                    </div>
+
+                    <div class="deck-readout"><span>44.1</span> KHZ · MONO</div>
+                </div>
+
+                <div class="cassette-bottom">
+                    <span class="screw"></span>
+                    <div class="cassette-holes"><span></span><span></span><span></span></div>
+                    <span class="screw"></span>
+                </div>
+            </section>
+
+            <section class="transcription-card">
+                <div class="transcription-heading">
+                    <div>
+                        <p class="small-label section-kicker">PLAYBACK &amp; TRANSCRIPTION</p>
+                        <h2 id="transcriptionTitle">Transcription</h2>
+                    </div>
+
+                    <div class="transcription-tools">
+                        <span class="tool-chip">◉ English (US)</span>
+                    </div>
+                </div>
+
+                <div class="playback-strip">
+                    <button class="playback-button" type="button" aria-label="Play selected recording">▶</button>
+                    <div class="waveform-wrap">
+                        <div id="waveformBars" class="waveform-bars" aria-hidden="true"></div>
+                        <div class="waveform-time">
+                            <span>00:00</span>
+                            <span id="waveformDuration">00:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="transcript-meta">
+                    <div class="meta-badges">
+                        <span id="transcriptStatus" class="status-badge"><i></i> STANDBY</span>
+                        <span class="ai-badge">✦ AI SUMMARY</span>
+                    </div>
+                    <span id="transcriptStats" class="transcript-stats">0 words · waiting for audio</span>
+                </div>
+
+                <div class="paper">
+                    <div class="paper-margin" aria-hidden="true"></div>
+                    <p id="transcriptionText" class="placeholder">
+                        Your recorded words will appear here. Select a saved tape or start a new recording.
+                    </p>
+                </div>
+            </section>
+        </div>
+
+        <aside class="archive-panel">
+            <div class="archive-header">
+                <div>
+                    <p class="small-label section-kicker">ARCHIVE</p>
+                    <div class="archive-title-row">
+                        <h2>Saved Recordings</h2>
+                        <span id="archiveCount" class="archive-count">05</span>
+                    </div>
+                </div>
+                <span class="archive-wave" aria-hidden="true">⌁⌁⌁</span>
+            </div>
+
+            <div id="archiveList" class="archive-list"></div>
+        </aside>
+    </section>
+
+    <footer>
+        <span><span class="footer-light"></span> API READY <b>⌁⌁</b></span>
+        <span>CASSETTE 001 · ANALOG INTELLIGENCE</span>
+    </footer>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
