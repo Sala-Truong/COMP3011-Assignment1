@@ -15,11 +15,14 @@ public class OpenAiTranscriptionService {
 
     private final String apiKey;
     private final RestClient restClient;
+    private final UsageStatsService usageStatsService;
 
     public OpenAiTranscriptionService(
-            @Value("${openai.api.key}") String apiKey) {
+            @Value("${openai.api.key}") String apiKey,
+            UsageStatsService usageStatsService) {
 
         this.apiKey = apiKey;
+        this.usageStatsService = usageStatsService;
 
         this.restClient = RestClient.builder()
                 .baseUrl("https://api.openai.com")
@@ -50,7 +53,24 @@ public class OpenAiTranscriptionService {
             throw new IOException("OpenAI returned no transcription");
         }
 
+        if (response.usage() != null) {
+            usageStatsService.addUsage(
+                    response.usage().input_tokens(),
+                    response.usage().output_tokens()
+            );
+        }
+
         return response.text();
     }
-    private record TranscriptionResponse(String text) {}
+
+    private record TranscriptionResponse(
+            String text,
+            Usage usage
+    ) {}
+
+    private record Usage(
+            long input_tokens,
+            long output_tokens,
+            long total_tokens
+    ) {}
 }
