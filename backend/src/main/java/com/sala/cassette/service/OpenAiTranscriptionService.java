@@ -38,7 +38,7 @@ public class OpenAiTranscriptionService {
     public String transcribe(MultipartFile audio) throws IOException {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
-        body.add("model", "gpt-4o-mini-transcribe");
+        body.add("model", "gpt-4o-transcribe");
         body.add("file", audio.getResource());
 
         logger.debug("Sending audio to OpenAI transcription service");
