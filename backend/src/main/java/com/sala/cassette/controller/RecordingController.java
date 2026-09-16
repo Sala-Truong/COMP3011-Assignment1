@@ -27,6 +27,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.client.HttpClientErrorException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sala.cassette.model.Recording;
 import com.sala.cassette.repository.RecordingRepository;
@@ -50,7 +52,9 @@ public class RecordingController {
     private final Path uploadDirectory =
             Paths.get("uploads").toAbsolutePath().normalize();
 
-
+    private static final Logger logger =
+            LoggerFactory.getLogger(RecordingController.class);
+    
     public RecordingController(
             JsonMapper objectMapper,
             RecordingRepository recordingRepository,
@@ -215,10 +219,10 @@ public class RecordingController {
                 Files.deleteIfExists(filePath);
 
             } catch (IOException e) {
-
-                System.err.println(
-                        "Could not delete audio file: "
-                        + filePath
+                logger.warn(
+                        "Could not delete audio file: {}",
+                        filePath,
+                        e
                 );
             }
         }
@@ -276,17 +280,37 @@ public class RecordingController {
         String cloudTranscript;
 
         try {
-            cloudTranscript = transcriptionService.transcribe(audio);
+
+            logger.info(
+                    "Received audio recording for transcription"
+            );
+
+            cloudTranscript =
+                    transcriptionService.transcribe(audio);
+
+            logger.info(
+                    "Audio transcription completed successfully"
+            );
 
         } catch (HttpClientErrorException e) {
 
             if (e.getStatusCode().value() == 429) {
+
+                logger.warn(
+                        "Transcription service rate limit reached"
+                );
+
                 throw new ResponseStatusException(
                         HttpStatus.SERVICE_UNAVAILABLE,
                         "Transcription service is temporarily unavailable",
                         e
                 );
             }
+
+            logger.error(
+                    "Transcription service returned HTTP error {}",
+                    e.getStatusCode().value()
+            );
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
@@ -295,6 +319,11 @@ public class RecordingController {
             );
 
         } catch (IOException e) {
+
+            logger.error(
+                    "Transcription service failed",
+                    e
+            );
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,

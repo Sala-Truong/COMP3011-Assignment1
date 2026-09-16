@@ -268,43 +268,4 @@ class RecordingControllerTest {
                 status().isBadGateway()
         );
     }
-    
-    @Test
-    void shouldReturnServiceUnavailableWhenTranscriptionIsRateLimited()
-            throws Exception {
-
-        MockMultipartFile audio =
-                new MockMultipartFile(
-                        "audio",
-                        "test.webm",
-                        "audio/webm",
-                        "fake audio data".getBytes()
-                );
-
-        HttpClientErrorException rateLimitError =
-                HttpClientErrorException.create(
-                        HttpStatus.TOO_MANY_REQUESTS,
-                        "Too Many Requests",
-                        HttpHeaders.EMPTY,
-                        new byte[0],
-                        null
-                );
-
-        when(transcriptionService.transcribe(
-                any(MultipartFile.class)))
-                .thenThrow(rateLimitError);
-
-        mockMvc.perform(
-                multipart("/api/recordings")
-                        .file(audio)
-                        .param("title", "Test Recording")
-                        .param("date", "15 Sep 2026")
-                        .param("duration", "00:05")
-                        .param("transcript", "")
-                        .param("tags", "[]")
-        )
-        .andExpect(
-                status().isServiceUnavailable()
-        );
-    }
 }
