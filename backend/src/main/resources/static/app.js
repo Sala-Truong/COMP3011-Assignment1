@@ -38,11 +38,7 @@ let audioChunks = [];
 let currentAudio = null;
 let recordedBlob = null;
 
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
+// These variables keep track of the current recording state, the selected tape, and the UI elements we need to update.
 function escapeHTML(value) {
     return String(value)
         .replaceAll("&", "&amp;")
@@ -183,11 +179,7 @@ function normaliseRecording(recording) {
     };
 }
 
-
-/* =========================================================
-   API
-========================================================= */
-
+// This is the main data flow between the browser and the backend. The page loads saved recordings and sends new ones back to the server.
 async function loadRecordings() {
     try {
         const response = await fetch(API_URL);
@@ -211,7 +203,6 @@ async function loadRecordings() {
         setTranscriptState("BACKEND UNAVAILABLE", "recording");
     }
 }
-
 
 async function saveRecordingToServer(recording) {
     const formData = new FormData();
@@ -238,11 +229,7 @@ async function saveRecordingToServer(recording) {
     return normaliseRecording(await response.json());
 }
 
-
-/* =========================================================
-   RECORD
-========================================================= */
-
+// This is the main recording flow: request mic access, capture audio, send it to the backend, and update the UI when the transcript comes back.
 recordButton.addEventListener("click", async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         statusText.textContent = "MIC NOT SUPPORTED";
@@ -421,12 +408,6 @@ recordButton.addEventListener("click", async () => {
     }
 });
 
-
-/* =========================================================
-   STOP
-   Stops the tape, but does not save it yet.
-========================================================= */
-
 stopButton.addEventListener("click", () => {
     if (!mediaRecorder || mediaRecorder.state !== "recording") {
         return;
@@ -452,10 +433,6 @@ stopButton.addEventListener("click", () => {
 
     mediaRecorder.stop();
 });
-
-/* =========================================================
-   NEW TAPE
-========================================================= */
 
 resetButton.addEventListener("click", () => {
     clearInterval(timerInterval);
@@ -513,20 +490,16 @@ resetButton.addEventListener("click", () => {
 });
 
 async function deleteRecording(id) {
-	const response = await fetch(
-	    `${API_URL}/${id}`,
-	    {
-	        method: "DELETE"
-	    }
-	);
+    const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE"
+    });
 
     if (!response.ok) {
         throw new Error("Failed to delete recording");
     }
 }
-/* =========================================================
-   ARCHIVE
-========================================================= */
+
+// The archive view renders all saved recordings and lets the user open, play, or delete any tape from the list.
 async function updateRecordingTitle(id, newTitle) {
     const response = await fetch(
         `${API_URL}/${id}`,
@@ -714,11 +687,7 @@ function renderArchive() {
     });
 }
 
-
-/* =========================================================
-   SELECT + PLAY SAVED RECORDING
-========================================================= */
-
+// Selecting a saved recording loads the transcript and metadata into the main panel, while playback reuses the audio URL from the server.
 function selectRecording(id) {
     const recording = recordings.find(item => String(item.id) === String(id));
 
@@ -827,9 +796,6 @@ if (playbackButton) {
     });
 }
 
-/* =========================================================
-   INITIALISE
-========================================================= */
 document.addEventListener("DOMContentLoaded", async () => {
     await loadRecordings();
 });

@@ -37,6 +37,35 @@ UsageStatsService
     ↓
 Response returned to browser
 
+## Design Decisions
+
+### Thread-safe usage statistics
+Usage statistics are shared across requests. AtomicLong is used instead
+of a normal long because token totals may be updated by multiple request
+threads concurrently. Atomic operations prevent lost updates.
+
+### STT service separation
+OpenAI communication is implemented in OpenAiTranscriptionService rather
+than directly in the controller. This separates HTTP request handling from
+external cloud communication and allows the STT dependency to be mocked
+during regression testing.
+
+### Environment-based API credentials
+The OpenAI API key is obtained through OPENAI_API_KEY at runtime. It is
+never included in frontend code, persisted, or logged.
+
+## Regression Test Rationale
+
+RecordingControllerTest uses a mocked STT service so controller behaviour
+can be tested deterministically without network access or API charges.
+
+UsageStatsServiceTest deliberately performs concurrent updates to expose
+potential race conditions.
+
+ConcurrentHttpRequestTest sends 250 concurrent HTTP requests to verify
+that the application remains responsive beyond the assignment requirement
+of 200 simultaneous requests.
+
 ## Backend Structure
 
 ### RecordingController
@@ -175,3 +204,10 @@ receives the API key.
 - OpenAI Audio Transcription API
 - JUnit
 - Mockito
+
+## Development Assistance
+
+Generative AI was used as a development aid for explaining Spring Boot
+concepts, debugging errors, reviewing code, and assisting with regression
+test design. All generated suggestions were reviewed, modified, tested,
+and integrated by the author, who is responsible for the final implementation.

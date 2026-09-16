@@ -23,82 +23,51 @@ class ConcurrentHttpRequestTest {
     @LocalServerPort
     private int port;
 
+    // This test pushes the application with a large burst of simultaneous requests.
+    // It checks that the service remains responsive and returns a successful response for each one.
     @Test
-    void shouldHandleMoreThan200ConcurrentHttpRequests()
-            throws Exception {
-
+    void shouldHandleMoreThan200ConcurrentHttpRequests() throws Exception {
         int requestCount = 250;
 
         HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
-        List<CompletableFuture<HttpResponse<String>>> futures =
-                new ArrayList<>();
-
+        List<CompletableFuture<HttpResponse<String>>> futures = new ArrayList<>();
         long start = System.nanoTime();
 
         for (int i = 0; i < requestCount; i++) {
-
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(
-                            "http://localhost:"
-                                    + port
-                                    + "/api/v1/global/stats"
-                    ))
-                    .timeout(Duration.ofSeconds(10))
-                    .GET()
-                    .build();
+                .uri(URI.create("http://localhost:" + port + "/api/v1/global/stats"))
+                .timeout(Duration.ofSeconds(10))
+                .GET()
+                .build();
 
-            CompletableFuture<HttpResponse<String>> future =
-                    client.sendAsync(
-                            request,
-                            HttpResponse.BodyHandlers.ofString()
-                    );
+            CompletableFuture<HttpResponse<String>> future = client.sendAsync(
+                request,
+                HttpResponse.BodyHandlers.ofString());
 
             futures.add(future);
         }
 
-        CompletableFuture.allOf(
-                futures.toArray(
-                        new CompletableFuture<?>[0]
-                )
-        ).get(15, TimeUnit.SECONDS);
+        // Wait until every request completes before checking the results.
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]))
+            .get(15, TimeUnit.SECONDS);
 
-        long elapsedMillis =
-                TimeUnit.NANOSECONDS.toMillis(
-                        System.nanoTime() - start
-                );
+        long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
 
-        for (CompletableFuture<HttpResponse<String>> future
-                : futures) {
-
-            HttpResponse<String> response =
-                    future.get();
-
-            assertEquals(
-                    200,
-                    response.statusCode()
-            );
+        for (CompletableFuture<HttpResponse<String>> future : futures) {
+            HttpResponse<String> response = future.get();
+            assertEquals(200, response.statusCode());
         }
 
-        assertEquals(
-                requestCount,
-                futures.size()
-        );
+        assertEquals(requestCount, futures.size());
 
         assertTrue(
-                elapsedMillis < 15_000,
-                "250 concurrent requests took too long: "
-                        + elapsedMillis
-                        + " ms"
-        );
+            elapsedMillis < 15_000,
+            "250 concurrent requests took too long: " + elapsedMillis + " ms");
 
         System.out.println(
-                requestCount
-                        + " concurrent HTTP requests completed in "
-                        + elapsedMillis
-                        + " ms"
-        );
+            requestCount + " concurrent HTTP requests completed in " + elapsedMillis + " ms");
     }
 }

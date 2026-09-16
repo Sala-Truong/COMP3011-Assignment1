@@ -16,24 +16,26 @@ import com.sala.cassette.service.UsageStatsService;
 @WebMvcTest(StatsController.class)
 class StatsControllerTest {
 
+    // MockMvc lets us test the HTTP layer without starting the full application.
     @Autowired
     private MockMvc mockMvc;
 
+    // This service is stubbed so the controller can be tested in isolation.
     @MockitoBean
     private UsageStatsService usageStatsService;
 
+    // The endpoint should return the current token totals in the expected JSON format.
     @Test
     void shouldReturnGlobalStats() throws Exception {
-
         when(usageStatsService.getInputTokens())
-                .thenReturn(25L);
+            .thenReturn(25L);
 
         when(usageStatsService.getOutputTokens())
-                .thenReturn(10L);
+            .thenReturn(10L);
 
         mockMvc.perform(get("/api/v1/global/stats"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.inputTokens").value(25))
-                .andExpect(jsonPath("$.outputTokens").value(10));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.inputTokens").value(25))
+            .andExpect(jsonPath("$.outputTokens").value(10));
     }
 }

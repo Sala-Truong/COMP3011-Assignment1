@@ -33,239 +33,118 @@ import com.sala.cassette.service.OpenAiTranscriptionService;
 @WebMvcTest(RecordingController.class)
 class RecordingControllerTest {
 
+    // MockMvc allows us to exercise the controller layer without booting the full app.
     @Autowired
     private MockMvc mockMvc;
 
+    // These repositories and services are mocked so the controller can be tested in isolation.
     @MockitoBean
     private RecordingRepository recordingRepository;
 
     @MockitoBean
     private OpenAiTranscriptionService transcriptionService;
 
-
+    // This test checks the full happy path: upload audio, transcribe it, and return a saved recording.
     @Test
-    void shouldUploadAudioAndReturnCloudTranscript()
-            throws Exception {
+    void shouldUploadAudioAndReturnCloudTranscript() throws Exception {
+        MockMultipartFile audio = new MockMultipartFile(
+            "audio",
+            "test.webm",
+            "audio/webm",
+            "fake audio data".getBytes());
 
-        MockMultipartFile audio =
-                new MockMultipartFile(
-                        "audio",
-                        "test.webm",
-                        "audio/webm",
-                        "fake audio data".getBytes()
-                );
+        when(transcriptionService.transcribe(any(MultipartFile.class)))
+            .thenReturn("This is the cloud transcript.");
 
-        when(transcriptionService.transcribe(
-                any(MultipartFile.class)))
-                .thenReturn(
-                        "This is the cloud transcript."
-                );
+        AtomicReference<Path> createdFile = new AtomicReference<>();
 
-        AtomicReference<Path> createdFile =
-                new AtomicReference<>();
+        // The repository is mocked, so we simulate the ID generation that a real database would normally do.
+        when(recordingRepository.save(any(Recording.class)))
+            .thenAnswer(invocation -> {
+                Recording recording = invocation.getArgument(0);
 
-        /*
-         * Our repository is mocked, so H2 will not generate
-         * an ID automatically. We simulate that behaviour here.
-         */
-        when(recordingRepository.save(
-                any(Recording.class)))
-                .thenAnswer(invocation -> {
+                if (recording.getId() == null) {
+                    recording.setId(1L);
+                }
 
-                    Recording recording =
-                            invocation.getArgument(0);
+                if (recording.getAudioFilename() != null) {
+                    createdFile.set(Paths.get("uploads")
+                        .toAbsolutePath()
+                        .normalize()
+                        .resolve(recording.getAudioFilename()));
+                }
 
-                    if (recording.getId() == null) {
-                        recording.setId(1L);
-                    }
-
-                    if (recording.getAudioFilename()
-                            != null) {
-
-                        createdFile.set(
-                                Paths.get("uploads")
-                                        .toAbsolutePath()
-                                        .normalize()
-                                        .resolve(
-                                                recording
-                                                        .getAudioFilename()
-                                        )
-                        );
-                    }
-
-                    return recording;
-                });
+                return recording;
+            });
 
         try {
-
             mockMvc.perform(
                     multipart("/api/recordings")
-                            .file(audio)
-                            .param(
-                                    "title",
-                                    "Test Recording"
-                            )
-                            .param(
-                                    "date",
-                                    "15 Sep 2026"
-                            )
-                            .param(
-                                    "duration",
-                                    "00:05"
-                            )
-                            .param(
-                                    "transcript",
-                                    ""
-                            )
-                            .param(
-                                    "icon",
-                                    "●"
-                            )
-                            .param(
-                                    "accent",
-                                    "#b85d43"
-                            )
-                            .param(
-                                    "tags",
-                                    "[\"Voice Memo\"]"
-                            )
-            )
-            .andExpect(status().isOk())
-            .andExpect(
-                    jsonPath("$.id")
-                            .value(1)
-            )
-            .andExpect(
-                    jsonPath("$.title")
-                            .value("Test Recording")
-            )
-            .andExpect(
-                    jsonPath("$.transcript")
-                            .value(
-                                    "This is the cloud transcript."
-                            )
-            )
-            .andExpect(
-                    jsonPath("$.audioUrl")
-                            .value(
-                                    endsWith(
-                                            "/api/recordings/1/audio"
-                                    )
-                            )
-            );
+                        .file(audio)
+                        .param("title", "Test Recording")
+                        .param("date", "15 Sep 2026")
+                        .param("duration", "00:05")
+                        .param("transcript", "")
+                        .param("icon", "●")
+                        .param("accent", "#b85d43")
+                        .param("tags", "[\"Voice Memo\"]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Test Recording"))
+                .andExpect(jsonPath("$.transcript").value("This is the cloud transcript."))
+                .andExpect(jsonPath("$.audioUrl").value(endsWith("/api/recordings/1/audio")));
 
-            verify(transcriptionService)
-                    .transcribe(
-                            any(MultipartFile.class)
-                    );
-
+            verify(transcriptionService).transcribe(any(MultipartFile.class));
         } finally {
-
-            /*
-             * The controller saves the uploaded audio
-             * to disk, so remove the test file afterwards.
-             */
+            // The controller saves the uploaded audio to disk, so we clean up the test file afterwards.
             if (createdFile.get() != null) {
-                Files.deleteIfExists(
-                        createdFile.get()
-                );
+                Files.deleteIfExists(createdFile.get());
             }
         }
     }
 
-
+    // An empty file should be rejected before the transcription layer is called.
     @Test
-    void shouldRejectEmptyAudio()
-            throws Exception {
-
-        MockMultipartFile emptyAudio =
-                new MockMultipartFile(
-                        "audio",
-                        "empty.webm",
-                        "audio/webm",
-                        new byte[0]
-                );
+    void shouldRejectEmptyAudio() throws Exception {
+        MockMultipartFile emptyAudio = new MockMultipartFile(
+            "audio",
+            "empty.webm",
+            "audio/webm",
+            new byte[0]);
 
         mockMvc.perform(
                 multipart("/api/recordings")
-                        .file(emptyAudio)
-                        .param(
-                                "title",
-                                "Empty Recording"
-                        )
-                        .param(
-                                "date",
-                                "15 Sep 2026"
-                        )
-                        .param(
-                                "duration",
-                                "00:00"
-                        )
-                        .param(
-                                "transcript",
-                                ""
-                        )
-                        .param(
-                                "tags",
-                                "[]"
-                        )
-        )
-        .andExpect(
-                status().isBadRequest()
-        );
+                    .file(emptyAudio)
+                    .param("title", "Empty Recording")
+                    .param("date", "15 Sep 2026")
+                    .param("duration", "00:00")
+                    .param("transcript", "")
+                    .param("tags", "[]"))
+            .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(
-                transcriptionService
-        );
+        verifyNoInteractions(transcriptionService);
     }
 
-
+    // If the cloud transcription service fails, the API should return a gateway error instead of crashing.
     @Test
-    void shouldReturnBadGatewayWhenTranscriptionFails()
-            throws Exception {
+    void shouldReturnBadGatewayWhenTranscriptionFails() throws Exception {
+        MockMultipartFile audio = new MockMultipartFile(
+            "audio",
+            "test.webm",
+            "audio/webm",
+            "fake audio data".getBytes());
 
-        MockMultipartFile audio =
-                new MockMultipartFile(
-                        "audio",
-                        "test.webm",
-                        "audio/webm",
-                        "fake audio data".getBytes()
-                );
-
-        when(transcriptionService.transcribe(
-                any(MultipartFile.class)))
-                .thenThrow(
-                        new IOException(
-                                "Fake STT failure"
-                        )
-                );
+        when(transcriptionService.transcribe(any(MultipartFile.class)))
+            .thenThrow(new IOException("Fake STT failure"));
 
         mockMvc.perform(
                 multipart("/api/recordings")
-                        .file(audio)
-                        .param(
-                                "title",
-                                "Test Recording"
-                        )
-                        .param(
-                                "date",
-                                "15 Sep 2026"
-                        )
-                        .param(
-                                "duration",
-                                "00:05"
-                        )
-                        .param(
-                                "transcript",
-                                ""
-                        )
-                        .param(
-                                "tags",
-                                "[]"
-                        )
-        )
-        .andExpect(
-                status().isBadGateway()
-        );
+                    .file(audio)
+                    .param("title", "Test Recording")
+                    .param("date", "15 Sep 2026")
+                    .param("duration", "00:05")
+                    .param("transcript", "")
+                    .param("tags", "[]"))
+            .andExpect(status().isBadGateway());
     }
 }

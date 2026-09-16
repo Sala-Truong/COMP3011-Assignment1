@@ -32,35 +32,31 @@ public class Recording {
 
     private String audioUrl;
 
+    // This field is kept out of JSON so the client never sees the server-side filename.
     @JsonIgnore
     private String audioFilename;
 
+    // Tags are stored in a separate table so the list can grow without cluttering the main entity table.
     @ElementCollection
-    @CollectionTable(
-        name = "recording_tags",
-        joinColumns = @JoinColumn(name = "recording_id")
-    )
+    @CollectionTable(name = "recording_tags", joinColumns = @JoinColumn(name = "recording_id"))
     @Column(name = "tag")
     private List<String> tags = new ArrayList<>();
 
-
-    // Required by JPA
+    // JPA requires a no-arg constructor when creating entity instances.
     public Recording() {
     }
 
-
-    // Used when creating a new recording
-    // ID is NOT included because H2 generates it
+    // This constructor is used when a new recording is created and the database will assign the ID.
     public Recording(
-            String title,
-            String date,
-            String duration,
-            String icon,
-            List<String> tags,
-            String accent,
-            String transcript,
-            String audioUrl,
-            String audioFilename) {
+        String title,
+        String date,
+        String duration,
+        String icon,
+        List<String> tags,
+        String accent,
+        String transcript,
+        String audioUrl,
+        String audioFilename) {
 
         this.title = title;
         this.date = date;
@@ -72,7 +68,6 @@ public class Recording {
         this.audioUrl = audioUrl;
         this.audioFilename = audioFilename;
     }
-
 
     public Long getId() {
         return id;

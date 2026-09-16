@@ -32,6 +32,7 @@ body {
     overflow-x: hidden;
 }
 
+/* The background treatment gives the app a warm cassette-inspired texture without making the interface hard to read. */
 body::before {
     content: "";
     position: fixed;
@@ -75,6 +76,7 @@ button:focus-visible {
 }
 
 /* HEADER */
+/* The top bar creates the app shell and keeps the brand identity consistent across the interface. */
 .header {
     min-height: 112px;
     display: grid;
@@ -172,6 +174,7 @@ button:focus-visible {
 .settings-icon { color: #d99b49; font-size: 14px; }
 
 /* WORKSPACE */
+/* The main layout splits the recorder from the archive so both workflows stay visible at the same time. */
 .workspace {
     flex: 1;
     min-height: 0;
@@ -192,6 +195,7 @@ button:focus-visible {
 }
 
 /* CASSETTE */
+/* The cassette styling is intentionally designed to feel like an old tape deck, which matches the recording experience. */
 .cassette {
     position: relative;
     width: 100%;
@@ -701,6 +705,7 @@ button:focus-visible {
 .cassette-holes span { width: 14px; height: 14px; background: #433a31; border-radius: 50%; box-shadow: inset 1px 1px 1px rgba(255,255,255,.08); }
 
 /* TRANSCRIPTION */
+/* This section is the reading area for the generated transcript and the playback controls. */
 .transcription-card {
     min-width: 0;
     min-height: 0;
@@ -893,6 +898,7 @@ button:focus-visible {
 .placeholder { opacity: .55; font-style: italic; }
 
 /* ARCHIVE */
+/* The archive panel keeps every saved recording in one place so the user can reopen or remove old tapes quickly. */
 .archive-panel {
     min-width: 0;
     min-height: 0;
