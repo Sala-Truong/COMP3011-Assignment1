@@ -284,11 +284,6 @@ recordButton.addEventListener("click", async () => {
 		    const audioBlob = new Blob(audioChunks, { type: mimeType });
 		    const duration = formatDuration(seconds);
 
-		    // Browser transcript can still be used temporarily while waiting
-		    // for the accurate server/OpenAI transcription.
-		    const browserTranscript =
-		        `${finalTranscript}${interimTranscript}`.trim();
-
 		    pendingRecording = {
 		        title: currentRecordingName,
 		        date: getCurrentDate(),
@@ -296,7 +291,7 @@ recordButton.addEventListener("click", async () => {
 		        icon: "●",
 		        tags: ["New", "Voice Memo"],
 		        accent: "#b85d43",
-		        transcript: browserTranscript,
+		        transcript: "",
 		        audioBlob,
 		        localAudioUrl: URL.createObjectURL(audioBlob)
 		    };
@@ -368,9 +363,8 @@ recordButton.addEventListener("click", async () => {
 		            "recording"
 		        );
 
-		        transcriptionText.textContent =
-		            browserTranscript ||
-		            "Transcription could not be completed.";
+				transcriptionText.textContent =
+				    "Transcription could not be completed.";
 
 		        recordButton.disabled = false;
 		    }
